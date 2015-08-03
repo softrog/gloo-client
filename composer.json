@@ -3,7 +3,7 @@
     "description": "Simple RESTful client",
     "type": "php",
     "require": {
-        "symfony/config": "~2.5.0"
+        "symfony/config": "~2.0"
     },
     "license": "MIT",
     "authors": [
