@@ -132,7 +132,7 @@ class CurlHandler extends HandlerAbstract
     $headLines = explode("\n", trim($header));
 
     $status = array_shift($headLines);
-    if (!preg_match('/^(?<version>[^ ]+) (?<statusCode>[^ ]+) (?<reason>[^ ]+)$/', $status, $matches)) {
+    if (!preg_match('/^(?<version>[^ ]+) (?<statusCode>[^ ]+) (?<reason>.+)$/', $status, $matches)) {
       throw new \Exception('Wrong response from server');
     }
 
