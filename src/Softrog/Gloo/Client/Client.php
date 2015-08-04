@@ -3,21 +3,28 @@
 namespace Softrog\Gloo\Client;
 
 use Softrog\Gloo\Handler;
-use Softrog\Gloo\Response\Response;
+use Softrog\Gloo\Message\Response;
+use Softrog\Gloo\Message\ResponseInterface;
+use Softrog\Gloo\Message\Request;
+use Softrog\Gloo\Message\RequestInterface;
 use Softrog\Gloo\Configuration\ClientConfiguration;
 use Symfony\Component\Config\Definition\Processor;
 use Softrog\Gloo\Handler\HandlerInterface;
+use Softrog\Gloo\Middleware\MiddlewareInterface;
+use Softrog\Gloo\Middleware\RequestMiddlewareInterface;
+use Softrog\Gloo\Middleware\ResponseMiddlewareInterface;
 
 class Client
 {
+
   /** @var array */
-  private $configuration;
+  protected $configuration;
 
   /** @var HandlerInterface */
-  private $handler;
+  protected $handler;
 
-  /** @var Object */
-  private $serializer=null;
+  /** @var MiddlewareInterface[] */
+  private $middleware;
 
   /**
    * Build a client with configuration $configuration
@@ -31,65 +38,43 @@ class Client
   public function __construct($configuration)
   {
     $this->configuration = $this->processConfiguration($configuration);
-
     $this->handler = new Handler\CurlHandler();
+    $this->middleware = [];
   }
 
-  public function __call($name, $arguments)
+  /**
+   * Call automagically the handler method $method.
+   *
+   * @param string $method
+   * @param array $arguments
+   * @return ResponseInterface
+   * @throws \Exception If the given method doesn't exist for the handler.
+   */
+  public function __call($method, $arguments)
   {
-    $callback = [$this->handler, $name];
+    $callback = [$this->handler, $method];
 
     if (!is_callable($callback)) {
-      $message = sprintf("Method %s is not a valid HTTP method", $name);
+      $message = sprintf("Method %s is not a valid HTTP method", $method);
       throw new \Exception($message);
     }
 
-    $uri = $this->getUrl(array_shift($arguments));
-    array_unshift($arguments, $uri);
+    $request = new Request();
+    $request->addHeader('Host', 'api.saziso.dev.com');
+    $request->setMethod($method);
+    $request->setUrl($this->getUrl(array_shift($arguments)));
 
-    $response = call_user_func_array($callback, $arguments);
-
-    return $this->deserialize($response);
+    return $this->processRequest($request);
   }
 
   /**
-   * Set a serializer to serialize/deserialize requests and responses
+   * Add middleware to the client.
    *
-   * @param Object $serializer
-   * @return \Softrog\Gloo\Client\Client
+   * @param MiddlewareInterface $middleware
    */
-  public function setSerializer($serializer)
+  public function push(MiddlewareInterface $middleware)
   {
-    $this->serializer = $serializer;
-
-    return $this;
-  }
-
-  /**
-   * Deserialize response body
-   *
-   * @param Response $response
-   * @return Response
-   */
-  protected function deserialize(Response $response)
-  {
-    if (!is_null ($this->serializer)) {
-      $format = $this->parseMimeType($response->getHeader('Content-Type'));
-      $response->setBody($this->serializer->deserialize($response->getBody(), 'array', $format));
-    }
-
-    return $response;
-  }
-
-  /**
-   * Build the correct url to request based in the configuration and the current request
-   *
-   * @param string $uri
-   * @return string
-   */
-  protected function getUrl($uri)
-  {
-    return $this->configuration['base_uri'] . $uri;
+    $this->middleware[] = $middleware;
   }
 
   /**
@@ -107,18 +92,54 @@ class Client
   }
 
   /**
-   * Guess what format is the response to tell the serializer
-   * @todo a lot to improve here
+   * Process the request before sending it.
    *
-   * @param type $type
+   * @param RequestInterface $request
+   * @return ResponseInterface
+   */
+  protected function processRequest(RequestInterface $request)
+  {
+    foreach ($this->middleware as $middleware) {
+      if ($middleware instanceof RequestMiddlewareInterface) {
+        $middleware->onRequest($request);
+      }
+    }
+
+    $callback = [$this->handler, $request->getMethod()];
+    $response = call_user_func($callback, $request);
+
+    return $this->processResponse($response);
+  }
+
+  /**
+   * Process the request response.
+   *
+   * @param ResponseInterface $response
+   * @return ResponseInterface
+   */
+  protected function processResponse(ResponseInterface $response)
+  {
+    foreach ($this->middleware as $middleware) {
+      if ($middleware instanceof ResponseMiddlewareInterface) {
+        $status = $middleware->onResponse($response);
+        if ($status === false) { // Request has to be repited
+          return $this->processRequest($response->getRequest());
+        }
+      }
+    }
+
+    return $response;
+  }
+
+  /**
+   * Build the correct url to request based in the configuration and the current request
+   *
+   * @param string $uri
    * @return string
    */
-  protected function parseMimeType($type)
+  protected function getUrl($uri)
   {
-    switch ($type) {
-      case 'application/json':
-        return 'json';
-    }
+    return $this->configuration['base_uri'] . $uri;
   }
 
 }

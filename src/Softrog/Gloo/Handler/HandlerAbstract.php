@@ -2,13 +2,15 @@
 
 namespace Softrog\Gloo\Handler;
 
+use Softrog\Gloo\Message\RequestInterface;
+
 abstract class HandlerAbstract implements HandlerInterface
 {
 
   /**
    * {@inheritdoc}
    */
-  public function delete($uri)
+  public function delete(RequestInterface $request)
   {
     throw new Exception\MethodNotImplementedException('DELETE');
   }
@@ -16,7 +18,7 @@ abstract class HandlerAbstract implements HandlerInterface
   /**
    * {@inheritdoc}
    */
-  public function get($uri)
+  public function get(RequestInterface $request)
   {
     throw new Exception\MethodNotImplementedException('GET');
   }
@@ -24,7 +26,7 @@ abstract class HandlerAbstract implements HandlerInterface
   /**
    * {@inheritdoc}
    */
-  public function head($uri)
+  public function head(RequestInterface $request)
   {
     throw new Exception\MethodNotImplementedException('HEAD');
   }
@@ -32,7 +34,7 @@ abstract class HandlerAbstract implements HandlerInterface
   /**
    * {@inheritdoc}
    */
-  public function options($uri)
+  public function options(RequestInterface $request)
   {
     throw new Exception\MethodNotImplementedException('OPTIONS');
   }
@@ -40,7 +42,7 @@ abstract class HandlerAbstract implements HandlerInterface
   /**
    * {@inheritdoc}
    */
-  public function patch($uri)
+  public function patch(RequestInterface $request)
   {
     throw new Exception\MethodNotImplementedException('PATH');
   }
@@ -48,7 +50,7 @@ abstract class HandlerAbstract implements HandlerInterface
   /**
    * {@inheritdoc}
    */
-  public function post($uri)
+  public function post(RequestInterface $request)
   {
     throw new Exception\MethodNotImplementedException('POST');
   }
@@ -56,7 +58,7 @@ abstract class HandlerAbstract implements HandlerInterface
   /**
    * {@inheritdoc}
    */
-  public function put($uri)
+  public function put(RequestInterface $request)
   {
     throw new Exception\MethodNotImplementedException('PUT');
   }
@@ -64,7 +66,7 @@ abstract class HandlerAbstract implements HandlerInterface
   /**
    * {@inheritdoc}
    */
-  public function trace($uri)
+  public function trace(RequestInterface $request)
   {
     throw new Exception\MethodNotImplementedException('TRACE');
   }

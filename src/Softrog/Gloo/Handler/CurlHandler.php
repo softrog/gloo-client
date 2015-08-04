@@ -2,7 +2,8 @@
 
 namespace Softrog\Gloo\Handler;
 
-use Softrog\Gloo\Response\Response;
+use Softrog\Gloo\Message\Response;
+use Softrog\Gloo\Message\RequestInterface;
 
 class CurlHandler extends HandlerAbstract
 {
@@ -10,6 +11,11 @@ class CurlHandler extends HandlerAbstract
   /** @var Resource */
   protected $channel;
 
+  /**
+   * Initialize the handler.
+   *
+   * @throws \Exception
+   */
   public function __construct()
   {
     if (!function_exists('curl_init')) {
@@ -19,6 +25,9 @@ class CurlHandler extends HandlerAbstract
     $this->channel = curl_init();
   }
 
+  /**
+   * Destroy the handler.
+   */
   public function __destruct()
   {
     curl_close($this->channel);
@@ -27,73 +36,46 @@ class CurlHandler extends HandlerAbstract
   /**
    * {@inheritdoc}
    */
-  public function delete($uri)
+  public function delete(RequestInterface $request)
   {
-    return $this->request($uri, 'DELETE');
+    $request->setMethod('DELETE');
+    return $this->request($request, 'DELETE');
   }
 
   /**
    * {@inheritdoc}
    */
-  public function get($uri)
+  public function get(RequestInterface $request)
   {
-    return $this->request($uri, 'GET');
+    $request->setMethod('GET');
+    return $this->request($request, 'GET');
   }
 
   /**
    * {@inheritdoc}
    */
-  public function head($uri)
+  public function head(RequestInterface $request)
   {
-    return $this->request($uri, 'HEAD');
+    $request->setMethod('HEAD');
+    return $this->request($request, 'HEAD');
   }
 
   /**
    * {@inheritdoc}
    */
-  public function post($uri)
+  public function post(RequestInterface $request)
   {
-    return $this->request($uri, 'POST');
+    $request->setMethod('POST');
+    return $this->request($request, 'POST');
   }
 
   /**
    * {@inheritdoc}
    */
-  public function put($uri)
+  public function put(RequestInterface $request)
   {
-    return $this->request($uri, 'PUT');
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getStatusCode()
-  {
-    return $this->statusCode;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getReason()
-  {
-    return $this->reason;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getHeaders()
-  {
-    return $this->headers;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getBody()
-  {
-    return $this->body;
+    $request->setMethod('PUT');
+    return $this->request($request, 'PUT');
   }
 
   /**
@@ -103,15 +85,35 @@ class CurlHandler extends HandlerAbstract
    * @param string $method
    * @return Response
    */
-  protected function request($url, $method)
+  protected function request(RequestInterface $request)
   {
-    curl_setopt($this->channel, CURLOPT_CUSTOMREQUEST, $method);
+    curl_setopt($this->channel, CURLOPT_CUSTOMREQUEST, $request->getMethod());
     curl_setopt($this->channel, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($this->channel, CURLOPT_VERBOSE, 1);
     curl_setopt($this->channel, CURLOPT_HEADER, 1);
-    curl_setopt($this->channel, CURLOPT_URL, $url);
+    curl_setopt($this->channel, CURLOPT_URL, $request->getUrl());
+    curl_setopt($this->channel, CURLOPT_HTTPHEADER, $this->adaptHeaders($request->getHeaders()));
 
-    return $this->parseResponse(curl_exec($this->channel));
+    $response = $this->parseResponse(curl_exec($this->channel));
+    $response->setRequest($request);
+
+    return $response;
+  }
+
+  /**
+   * Transform an array of headers to a valid format for the curl library
+   *
+   * @param array $headers
+   * @return array
+   */
+  protected function adaptHeaders(array $headers)
+  {
+    $outputHeaders = [];
+    foreach ($headers as $name => $value) {
+      $outputHeaders[] = sprintf('%s: %s', $name, $value);
+    }
+
+    return $outputHeaders;
   }
 
   /**

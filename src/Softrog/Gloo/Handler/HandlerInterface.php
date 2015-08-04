@@ -2,90 +2,64 @@
 
 namespace Softrog\Gloo\Handler;
 
+use Softrog\Gloo\Message\RequestInterface;
+
 interface HandlerInterface
 {
 
   /**
    * Place a delete request to the URI $uri
    *
-   * @param string $uri
+   * @param RequestInterface $request
    */
-  public function delete($uri);
+  public function delete(RequestInterface $request);
 
   /**
    * Place a get request to the URI $uri
    *
-   * @param string $uri
+   * @param RequestInterface $request
    */
-  public function get($uri);
+  public function get(RequestInterface $request);
 
   /**
    * Place a head request to the URI $uri
    *
-   * @param string $uri
+   * @param RequestInterface $request
    */
-  public function head($uri);
+  public function head(RequestInterface $request);
 
   /**
    * Place a options request to the URI $uri
    *
-   * @param string $uri
+   * @param RequestInterface $request
    */
-  public function options($uri);
+  public function options(RequestInterface $request);
 
   /**
    * Place a patch request to the URI $uri
    *
-   * @param string $uri
+   * @param RequestInterface $request
    */
-  public function patch($uri);
+  public function patch(RequestInterface $request);
 
   /**
    * Place a post request to the URI $uri
    *
-   * @param string $uri
+   * @param RequestInterface $request
    */
-  public function post($uri);
+  public function post(RequestInterface $request);
 
   /**
    * Place a put request to the URI $uri
    *
-   * @param string $uri
+   * @param RequestInterface $request
    */
-  public function put($uri);
+  public function put(RequestInterface $request);
 
   /**
    * Place a trace request to the URI $uri
    *
-   * @param string $uri
+   * @param RequestInterface $request
    */
-  public function trace($uri);
-
-  /**
-   * Get last request response status code
-   *
-   * @return int
-   */
-  public function getStatusCode();
-
-  /**
-   * Get last request response reason
-   *
-   * @return string
-   */
-  public function getReason();
-
-  /**
-   * Get last request response headers
-   *
-   * @return array
-   */
-  public function getHeaders();
-
-  /**
-   * Get last request response body
-   *
-   * @return string
-   */
-  public function getBody();
+  public function trace(RequestInterface $request);
 }
