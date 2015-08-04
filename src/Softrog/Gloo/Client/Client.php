@@ -13,6 +13,7 @@ use Softrog\Gloo\Handler\HandlerInterface;
 use Softrog\Gloo\Middleware\MiddlewareInterface;
 use Softrog\Gloo\Middleware\RequestMiddlewareInterface;
 use Softrog\Gloo\Middleware\ResponseMiddlewareInterface;
+use Softrog\Gloo\Middleware\HeaderMiddleware;
 
 class Client
 {
@@ -39,7 +40,13 @@ class Client
   {
     $this->configuration = $this->processConfiguration($configuration);
     $this->handler = new Handler\CurlHandler();
-    $this->middleware = [];
+
+    $headers = [];
+    if (array_key_exists('headers', $this->configuration)) {
+      $headers = $this->configuration['headers'];
+    }
+
+    $this->push(new HeaderMiddleware($headers));
   }
 
   /**
@@ -60,7 +67,6 @@ class Client
     }
 
     $request = new Request();
-    $request->addHeader('Host', 'api.saziso.dev.com');
     $request->setMethod($method);
     $request->setUrl($this->getUrl(array_shift($arguments)));
 
@@ -74,6 +80,10 @@ class Client
    */
   public function push(MiddlewareInterface $middleware)
   {
+    if (!is_array($this->middleware)) {
+      $this->middleware = [];
+    }
+
     $this->middleware[] = $middleware;
   }
 

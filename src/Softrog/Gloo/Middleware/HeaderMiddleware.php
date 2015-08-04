@@ -10,6 +10,13 @@ class HeaderMiddleware implements RequestMiddlewareInterface
   /** @const */
   const USER_AGENT = "Gloobot/1.0";
 
+  protected $headers;
+
+  public function __construct(array $headers=[])
+  {
+    $this->headers = $headers;
+  }
+
   /**
    *
    * @param RequestInterface $request
@@ -23,6 +30,10 @@ class HeaderMiddleware implements RequestMiddlewareInterface
     }
 
     $request->addHeader('User-Agent', self::USER_AGENT);
+
+    foreach ($this->headers as $name => $value) {
+      $request->addHeader($name, $value);
+    }
   }
 
 }
