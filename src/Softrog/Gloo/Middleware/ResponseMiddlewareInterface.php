@@ -2,7 +2,7 @@
 
 namespace Softrog\Gloo\Middleware;
 
-use Softrog\Gloo\Message\ResponseInterface;
+use Psr\Http\Message\ResponseInterface;
 
 interface ResponseMiddlewareInterface extends MiddlewareInterface
 {
@@ -11,7 +11,7 @@ interface ResponseMiddlewareInterface extends MiddlewareInterface
    * Perform actions over the response object
    *
    * @param ResponseInterface $response
-   * @return boolean true if successful, false otherwise
+   * @return ResponseInterface
    */
   public function onResponse(ResponseInterface $response);
 }

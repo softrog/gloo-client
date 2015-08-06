@@ -2,7 +2,7 @@
 
 namespace Softrog\Gloo\Middleware;
 
-use Softrog\Gloo\Message\RequestInterface;
+use Psr\Http\Message\RequestInterface;
 
 interface RequestMiddlewareInterface extends MiddlewareInterface
 {
@@ -10,7 +10,7 @@ interface RequestMiddlewareInterface extends MiddlewareInterface
    * Perform actions over the request object.
    *
    * @param RequestInterface $request
-   * @return boolean true if successful, false otherwise
+   * @return RequestInterface
    */
   public function onRequest(RequestInterface $request);
 }

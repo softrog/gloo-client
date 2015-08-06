@@ -2,7 +2,7 @@
 
 namespace Softrog\Gloo\Handler;
 
-use Softrog\Gloo\Message\RequestInterface;
+use Psr\Http\Message\RequestInterface;
 
 interface HandlerInterface
 {

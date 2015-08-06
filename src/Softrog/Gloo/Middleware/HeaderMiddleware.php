@@ -2,7 +2,7 @@
 
 namespace Softrog\Gloo\Middleware;
 
-use Softrog\Gloo\Message\RequestInterface;
+use Psr\Http\Message\RequestInterface;
 
 class HeaderMiddleware implements RequestMiddlewareInterface
 {
@@ -23,17 +23,19 @@ class HeaderMiddleware implements RequestMiddlewareInterface
    */
   public function onRequest(RequestInterface $request)
   {
-    $tokens = parse_url($request->getUrl());
+    $newRequest = $request
+      ->withHeader('Host', $request->getUri()->getHost())
+      ->withHeader('User-Agent', self::USER_AGENT);
 
-    if (array_key_exists('host', $tokens)) {
-      $request->addHeader('Host', $tokens['host']);
-    }
+    $addHeaders = function (&$array, RequestInterface $request, callable $callback) {
+      $item = each($array);
+      if (!$item) {
+        return $request;
+      }
+      return $callback($array, $request)->withHeader($item['key'], $item['value']);
+    };
 
-    $request->addHeader('User-Agent', self::USER_AGENT);
-
-    foreach ($this->headers as $name => $value) {
-      $request->addHeader($name, $value);
-    }
+    return $addHeaders($this->headers, $newRequest, $addHeaders);
   }
 
 }
