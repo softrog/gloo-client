@@ -32,7 +32,7 @@ class HeaderMiddleware implements RequestMiddlewareInterface
       if (!$item) {
         return $request;
       }
-      return $callback($array, $request)->withHeader($item['key'], $item['value']);
+      return $callback($array, $request, $callback)->withHeader($item['key'], $item['value']);
     };
 
     return $addHeaders($this->headers, $newRequest, $addHeaders);

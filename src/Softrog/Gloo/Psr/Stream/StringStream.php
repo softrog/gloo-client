@@ -92,7 +92,7 @@ class StringStream implements StreamInterface
    */
   public function isWritable()
   {
-    return false;
+    return true;
   }
 
   /**
@@ -132,7 +132,9 @@ class StringStream implements StreamInterface
    */
   public function write($string)
   {
-    throw new \RuntimeException('The stream is not writable');
+    $this->string = $string;
+
+    return strlen($string);
   }
 
 }

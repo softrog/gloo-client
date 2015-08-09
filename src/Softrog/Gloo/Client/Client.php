@@ -16,7 +16,7 @@ use Softrog\Gloo\Middleware\RequestMiddlewareInterface;
 use Softrog\Gloo\Middleware\ResponseMiddlewareInterface;
 use Softrog\Gloo\Middleware\HeaderMiddleware;
 
-class Client
+class Client implements ClientInterface
 {
 
   /** @var array */
@@ -80,9 +80,7 @@ class Client
   }
 
   /**
-   * Add middleware to the client.
-   *
-   * @param MiddlewareInterface $middleware
+   * {@intheritdoc}
    */
   public function push(MiddlewareInterface $middleware)
   {
@@ -119,6 +117,10 @@ class Client
     foreach ($this->middleware as $middleware) {
       if ($middleware instanceof RequestMiddlewareInterface) {
         $request = $middleware->onRequest($request);
+
+        if (!$request instanceof RequestInterface) {
+          throw new Exception\UnexpectedRequestReceivedException(get_class($middleware));
+        }
       }
     }
 
@@ -146,6 +148,8 @@ class Client
         if (is_null($response)) {
           $this->tries--;
           return $this->processRequest($request);
+        } elseif (!$response instanceof ResponseInterface) {
+          throw new Exception\UnexpectedResponseReceivedException(get_class($middleware));
         }
       }
     }
