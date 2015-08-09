@@ -2,8 +2,10 @@
 
 namespace Softrog\Gloo\Handler;
 
-use Softrog\Gloo\Message\Response;
-use Softrog\Gloo\Message\RequestInterface;
+use Softrog\Gloo\Psr\Http\Message\Response;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Softrog\Gloo\Psr\Stream\StringStream;
 
 class CurlHandler extends HandlerAbstract
 {
@@ -38,8 +40,7 @@ class CurlHandler extends HandlerAbstract
    */
   public function delete(RequestInterface $request)
   {
-    $request->setMethod('DELETE');
-    return $this->request($request, 'DELETE');
+    return $this->request($request->withMethod('DELETE'));
   }
 
   /**
@@ -47,8 +48,7 @@ class CurlHandler extends HandlerAbstract
    */
   public function get(RequestInterface $request)
   {
-    $request->setMethod('GET');
-    return $this->request($request, 'GET');
+    return $this->request($request->withMethod('GET'));
   }
 
   /**
@@ -56,8 +56,7 @@ class CurlHandler extends HandlerAbstract
    */
   public function head(RequestInterface $request)
   {
-    $request->setMethod('HEAD');
-    return $this->request($request, 'HEAD');
+    return $this->request($request->withMethod('HEAD'));
   }
 
   /**
@@ -65,8 +64,7 @@ class CurlHandler extends HandlerAbstract
    */
   public function post(RequestInterface $request)
   {
-    $request->setMethod('POST');
-    return $this->request($request, 'POST');
+    return $this->request($request->withMethod('POST'));
   }
 
   /**
@@ -74,8 +72,28 @@ class CurlHandler extends HandlerAbstract
    */
   public function put(RequestInterface $request)
   {
-    $request->setMethod('PUT');
-    return $this->request($request, 'PUT');
+    return $this->request($request->withMethod('PUT'));
+  }
+
+  /**
+   * Magic to handle other methods not defined by the interface
+   *
+   * @param type $method
+   * @param type $arguments
+   * @return ResponseInterface
+   * @throws \InvalidArgumentException
+   */
+  public function __call($method, $arguments)
+  {
+    $request = array_shift($arguments);
+
+    if (!$request instanceof RequestInterface) {
+      throw new \InvalidArgumentException(
+        'The request argument has to be a valid Psr\Http\Message\RequestInterface'
+      );
+    }
+
+    return $this->request($request->withMethod($method));
   }
 
   /**
@@ -83,7 +101,7 @@ class CurlHandler extends HandlerAbstract
    *
    * @param string $url
    * @param string $method
-   * @return Response
+   * @return ResponseInterface
    */
   protected function request(RequestInterface $request)
   {
@@ -91,13 +109,10 @@ class CurlHandler extends HandlerAbstract
     curl_setopt($this->channel, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($this->channel, CURLOPT_VERBOSE, 1);
     curl_setopt($this->channel, CURLOPT_HEADER, 1);
-    curl_setopt($this->channel, CURLOPT_URL, $request->getUrl());
+    curl_setopt($this->channel, CURLOPT_URL, (string)$request->getUri());
     curl_setopt($this->channel, CURLOPT_HTTPHEADER, $this->adaptHeaders($request->getHeaders()));
 
-    $response = $this->parseResponse(curl_exec($this->channel));
-    $response->setRequest($request);
-
-    return $response;
+    return $this->parseResponse(curl_exec($this->channel));
   }
 
   /**
@@ -110,7 +125,7 @@ class CurlHandler extends HandlerAbstract
   {
     $outputHeaders = [];
     foreach ($headers as $name => $value) {
-      $outputHeaders[] = sprintf('%s: %s', $name, $value);
+      $outputHeaders[] = sprintf('%s: %s', $name, is_array($value)? implode(';', $value) : $value);
     }
 
     return $outputHeaders;
@@ -125,12 +140,8 @@ class CurlHandler extends HandlerAbstract
    */
   protected function parseResponse($data)
   {
-    $response = new Response();
-
     $header_size = curl_getinfo($this->channel, CURLINFO_HEADER_SIZE);
     $header = substr($data, 0, $header_size);
-    $response->setBody(substr($data, $header_size));
-
     $headLines = explode("\n", trim($header));
 
     $status = array_shift($headLines);
@@ -138,14 +149,21 @@ class CurlHandler extends HandlerAbstract
       throw new \Exception('Wrong response from server');
     }
 
-    $response->setStatusCode($matches['statusCode']);
-    $response->setReason($matches['reason']);
-    foreach ($headLines as $header) {
-      list($name, $value) = explode(":", $header);
-      $response->addHeader(trim($name), trim($value));
-    }
+    $response = (new Response())
+      ->withStatus($matches['statusCode'], $matches['reason'])
+      ->withBody(new StringStream(substr($data, $header_size)));
 
-    return $response;
+
+    $addHeaders = function (&$array, ResponseInterface $response, callable $callback) {
+      $item = each($array);
+      if (!$item) {
+        return $response;
+      }
+      list($name, $value) = explode(":", $item['value']);
+      return $callback($array, $response, $callback)->withHeader($name, $value);
+    };
+
+    return $addHeaders($headLines, $response, $addHeaders);
+
   }
-
 }

@@ -2,20 +2,21 @@
 
 namespace Softrog\Gloo\Client;
 
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\RequestInterface;
 use Softrog\Gloo\Handler;
-use Softrog\Gloo\Message\Response;
-use Softrog\Gloo\Message\ResponseInterface;
-use Softrog\Gloo\Message\Request;
-use Softrog\Gloo\Message\RequestInterface;
+use Softrog\Gloo\Handler\HandlerInterface;
+use Softrog\Gloo\Psr\Http\Message\Response;
+use Softrog\Gloo\Psr\Http\Message\Request;
+use Softrog\Gloo\Psr\Http\Message\Uri;
 use Softrog\Gloo\Configuration\ClientConfiguration;
 use Symfony\Component\Config\Definition\Processor;
-use Softrog\Gloo\Handler\HandlerInterface;
 use Softrog\Gloo\Middleware\MiddlewareInterface;
 use Softrog\Gloo\Middleware\RequestMiddlewareInterface;
 use Softrog\Gloo\Middleware\ResponseMiddlewareInterface;
 use Softrog\Gloo\Middleware\HeaderMiddleware;
 
-class Client
+class Client implements ClientInterface
 {
 
   /** @var array */
@@ -25,7 +26,10 @@ class Client
   protected $handler;
 
   /** @var MiddlewareInterface[] */
-  private $middleware;
+  protected $middleware;
+
+  /** @var integer */
+  protected $tries;
 
   /**
    * Build a client with configuration $configuration
@@ -36,7 +40,7 @@ class Client
    *
    * @param array $configuration
    */
-  public function __construct($configuration)
+  public function __construct($configuration=[])
   {
     $this->configuration = $this->processConfiguration($configuration);
     $this->handler = new Handler\CurlHandler();
@@ -66,17 +70,17 @@ class Client
       throw new \Exception($message);
     }
 
-    $request = new Request();
-    $request->setMethod($method);
-    $request->setUrl($this->getUrl(array_shift($arguments)));
+    $this->tries = $this->configuration['max_tries'];
+
+    $request = (new Request())
+      ->withMethod($method)
+      ->withUri($this->getUri(array_shift($arguments)));
 
     return $this->processRequest($request);
   }
 
   /**
-   * Add middleware to the client.
-   *
-   * @param MiddlewareInterface $middleware
+   * {@intheritdoc}
    */
   public function push(MiddlewareInterface $middleware)
   {
@@ -106,19 +110,28 @@ class Client
    *
    * @param RequestInterface $request
    * @return ResponseInterface
+   * @throws Exception\MaxRetriesExceededException
    */
   protected function processRequest(RequestInterface $request)
   {
     foreach ($this->middleware as $middleware) {
       if ($middleware instanceof RequestMiddlewareInterface) {
-        $middleware->onRequest($request);
+        $request = $middleware->onRequest($request);
+
+        if (!$request instanceof RequestInterface) {
+          throw new Exception\UnexpectedRequestReceivedException(get_class($middleware));
+        }
       }
     }
 
     $callback = [$this->handler, $request->getMethod()];
     $response = call_user_func($callback, $request);
 
-    return $this->processResponse($response);
+    if ($this->tries <= 0) {
+      throw new Exception\MaxRetriesExceededException();
+    }
+
+    return $this->processResponse($request, $response);
   }
 
   /**
@@ -127,13 +140,16 @@ class Client
    * @param ResponseInterface $response
    * @return ResponseInterface
    */
-  protected function processResponse(ResponseInterface $response)
+  protected function processResponse(RequestInterface $request, ResponseInterface $response)
   {
     foreach ($this->middleware as $middleware) {
       if ($middleware instanceof ResponseMiddlewareInterface) {
-        $status = $middleware->onResponse($response);
-        if ($status === false) { // Request has to be repited
-          return $this->processRequest($response->getRequest());
+        $response = $middleware->onResponse($response);
+        if (is_null($response)) {
+          $this->tries--;
+          return $this->processRequest($request);
+        } elseif (!$response instanceof ResponseInterface) {
+          throw new Exception\UnexpectedResponseReceivedException(get_class($middleware));
         }
       }
     }
@@ -147,9 +163,23 @@ class Client
    * @param string $uri
    * @return string
    */
-  protected function getUrl($uri)
+  protected function getUri($path)
   {
-    return $this->configuration['base_uri'] . $uri;
+    if (!array_key_exists('base_uri', $this->configuration)) {
+      return (new Uri())->withPath($path);
+    }
+
+    $components = $this->configuration['base_uri'];
+
+    if (strpos('/', $path) !== 0) { // relative path
+      $path = $components['path'] . $path;
+    }
+
+    return (new Uri())
+      ->withScheme($components['scheme'])
+      ->withHost($components['host'])
+      ->withPort($components['port'])
+      ->withPath($path);
   }
 
 }
