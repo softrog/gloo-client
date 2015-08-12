@@ -20,7 +20,7 @@ class StringStream implements StreamInterface
    */
   public function __toString()
   {
-    return $this->string();
+    return $this->string;
   }
 
   /**
