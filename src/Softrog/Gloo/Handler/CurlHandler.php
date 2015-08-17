@@ -110,7 +110,15 @@ class CurlHandler extends HandlerAbstract
     curl_setopt($this->channel, CURLOPT_VERBOSE, 1);
     curl_setopt($this->channel, CURLOPT_HEADER, 1);
     curl_setopt($this->channel, CURLOPT_URL, (string)$request->getUri());
-    curl_setopt($this->channel, CURLOPT_HTTPHEADER, $this->adaptHeaders($request->getHeaders()));
+
+    $headers = $request->getHeaders();
+
+    if (!empty($request->getBody()) && $request->getBody()->getSize() > 0) {
+      curl_setopt($this->channel, CURLOPT_POSTFIELDS, $request->getBody()->getContents());
+      $headers['Content-Length'] = strlen($request->getBody()->getContents());
+    }
+
+    curl_setopt($this->channel, CURLOPT_HTTPHEADER, $this->adaptHeaders($headers));
 
     return $this->parseResponse(curl_exec($this->channel));
   }

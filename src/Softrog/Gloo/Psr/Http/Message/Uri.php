@@ -217,7 +217,7 @@ class Uri implements UriInterface
   {
     $scheme = strtolower($scheme);
 
-    if (!in_array($scheme, array_keys($this->schemeDefinition))) {
+    if (!empty($scheme) && !in_array($scheme, array_keys($this->schemeDefinition))) {
       throw new \InvalidArgumentException(sprintf('Scheme \'%s\' not supported', $scheme));
     }
 
