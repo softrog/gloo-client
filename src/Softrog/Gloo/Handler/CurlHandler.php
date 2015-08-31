@@ -152,10 +152,13 @@ class CurlHandler extends HandlerAbstract
     $header = substr($data, 0, $header_size);
     $headLines = explode("\n", trim($header));
 
-    $status = array_shift($headLines);
-    if (!preg_match('/^(?<version>[^ ]+) (?<statusCode>[^ ]+) (?<reason>.+)$/', $status, $matches)) {
-      throw new \Exception('Wrong response from server');
-    }
+    do {
+      $status = array_shift($headLines);
+      if (!empty(trim($status)) && !preg_match('/^(?<version>[^ ]+) (?<statusCode>[^ ]+) (?<reason>.+)$/', $status, $matches)) {
+        throw new \Exception('Wrong response from server');
+      }
+    } while ($matches['statusCode'] == 100);
+
 
     $response = (new Response())
       ->withStatus($matches['statusCode'], $matches['reason'])
@@ -164,7 +167,7 @@ class CurlHandler extends HandlerAbstract
 
     $addHeaders = function (&$array, ResponseInterface $response, callable $callback) {
       $item = each($array);
-      if (!$item) {
+      if (!$item || empty($item['value'])) {
         return $response;
       }
       list($name, $value) = explode(":", $item['value']);

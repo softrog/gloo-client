@@ -73,28 +73,41 @@ class Client implements ClientInterface
     $this->tries = $this->configuration['max_tries'];
 
     $request = (new Request())
-            ->withMethod($method)
-            ->withUri($this->getUri(array_shift($arguments)))
+      ->withMethod($method)
+      ->withUri($this->getUri(array_shift($arguments)))
     ;
 
     $body = array_shift($arguments);
+    $headers = array_shift($arguments);
 
-    if (is_array($body)) {
-      $stream = new StringStream(json_encode($body));
-      $request = $request->withHeader('Content-Type', 'application/json');
-    } elseif(is_object($body)) {
-      $stream = new StringStream(json_encode((array)$body));
-      $request = $request->withHeader('Content-Type', 'application/json');
-    } elseif(is_string($body)) {
-      $stream = new StringStream($body);
-      $request = $request->withHeader('Content-Type', 'text/plain');
-    }
-
-    if (!empty($stream)) {
-      $request = $request->withBody($stream);
+    if (!empty($headers)) {
+      foreach ($headers as $name => $value) {
+        $request = $request->withHeader($name, $value);
+      }
+      $request = $request->withBody(new StringStream($body));
+    } else {
+      $request = $this->encodeBody($request, $body);
     }
 
     return $this->processRequest($request);
+  }
+
+  protected function encodeBody(Request $request, $body)
+  {
+    if (empty($body)) {
+      return $request;
+    }
+
+    if (is_array($body)) {
+      $stream = new StringStream(json_encode($body));
+      return $request->withHeader('Content-Type', 'application/json')->withBody($stream);
+    } elseif (is_object($body)) {
+      $stream = new StringStream(json_encode((array) $body));
+      return $request->withHeader('Content-Type', 'application/json')->withBody($stream);
+    } elseif (is_string($body)) {
+      $stream = new StringStream($body);
+      return $request->withHeader('Content-Type', 'text/plain')->withBody($stream);
+    }
   }
 
   /**
@@ -184,25 +197,25 @@ class Client implements ClientInterface
   protected function getUri($path)
   {
     $components = array_merge([
-        'scheme' => null,
-        'host' => null,
-        'port' => null,
-        'user' => null,
-        'pass' => null,
-        'path' => null,
-        'query' => null,
-        'fragment' => null], parse_url($path));
+      'scheme' => null,
+      'host' => null,
+      'port' => null,
+      'user' => null,
+      'pass' => null,
+      'path' => null,
+      'query' => null,
+      'fragment' => null], parse_url($path));
 
     if (!array_key_exists('base_uri', $this->configuration) ||
-            !empty($components['host'])) {
+      !empty($components['host'])) {
       return (new Uri())
-                      ->withScheme($components['scheme'])
-                      ->withHost($components['host'])
-                      ->withPort($components['port'])
-                      ->withUserInfo($components['user'], $components['pass'])
-                      ->withPath($components['path'])
-                      ->withQuery($components['query'])
-                      ->withFragment($components['fragment']);
+          ->withScheme($components['scheme'])
+          ->withHost($components['host'])
+          ->withPort($components['port'])
+          ->withUserInfo($components['user'], $components['pass'])
+          ->withPath($components['path'])
+          ->withQuery($components['query'])
+          ->withFragment($components['fragment']);
     }
 
     $defaultComponents = $this->configuration['base_uri'];
@@ -212,12 +225,12 @@ class Client implements ClientInterface
     }
 
     return (new Uri())
-                    ->withScheme($defaultComponents['scheme'])
-                    ->withHost($defaultComponents['host'])
-                    ->withPort($defaultComponents['port'])
-                    ->withPath($components['path'])
-                    ->withQuery($components['query'])
-                    ->withFragment($components['fragment'])
+        ->withScheme($defaultComponents['scheme'])
+        ->withHost($defaultComponents['host'])
+        ->withPort($defaultComponents['port'])
+        ->withPath($components['path'])
+        ->withQuery($components['query'])
+        ->withFragment($components['fragment'])
     ;
   }
 

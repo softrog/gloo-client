@@ -23,6 +23,7 @@ class HeaderMiddleware implements RequestMiddlewareInterface
    */
   public function onRequest(RequestInterface $request)
   {
+    reset($this->headers);
     $newRequest = $request
       ->withHeader('Host', $request->getUri()->getHost())
       ->withHeader('User-Agent', self::USER_AGENT);
