@@ -3,7 +3,7 @@
     "description": "Simple RESTful client",
     "type": "php",
     "require": {
-        "symfony/config": "~2.0",
+        "symfony/config": "~4.3",
         "psr/http-message": "^1.0"
     },
     "license": "MIT",
